@@ -1,5 +1,9 @@
+# cpp artifacts
+build/
+
 # python artifacts
 __pycache__
 
-# audio files
+# extras
 *.wav
+.vscode/

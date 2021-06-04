@@ -18,8 +18,8 @@ wavfile.write('ref.wav', fs, np.transpose(ref_signal))
 
 h_signal = np.zeros_like(ref_signal)
 p_signal = np.zeros_like(ref_signal)
-h_signal[0], p_signal[0] = hpss(ref_signal[0], mask_power=3)
-h_signal[1], p_signal[1] = hpss(ref_signal[1], mask_power=3)
+h_signal[0], p_signal[0] = hpss(ref_signal[0])
+h_signal[1], p_signal[1] = hpss(ref_signal[1])
 
 wavfile.write('harmonic.wav', fs, np.transpose(h_signal))
 wavfile.write('percussive.wav', fs, np.transpose(p_signal))

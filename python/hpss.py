@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.signal import windows
 
 eps = np.finfo(np.float32).eps
 
@@ -12,22 +13,27 @@ def median_filter(x, kernel_size):
 
     return y
 
-def hpss(x, perc_kernel=17, harm_kernel=17, mask_power=2, fft_size=4096, hop_size=1024):
-    ''' Simple harmonic/percussive source separation based on median filter method '''
-
-    print('Computing HPSS...')
-    print('Computing FFT...')
+def spectrogram(x, fft_size, hop_size, zero_pad):
     S = None
     for i in range(0, len(x), hop_size):
-        x_win = x[i : i + hop_size]
-        x_pad = np.zeros(fft_size)
+        x_win = x[i : i + fft_size]
+        x_pad = np.zeros(fft_size * zero_pad)
         x_pad[:len(x_win)] = x_win
 
         if S is None:
             S = np.array([np.fft.fft(x_pad)])
         else:
             S = np.append(S, np.array([np.fft.fft(x_pad)]), axis=0)
-    
+
+    return S
+
+def hpss(x, perc_kernel=17, harm_kernel=17, mask_power=2, fft_size=4096, hop_size=1024, zero_pad=2):
+    ''' Simple harmonic/percussive source separation based on median filter method '''
+
+    print('Computing HPSS...')
+    print('Computing STFTs...')
+    S = spectrogram(x, fft_size, hop_size, zero_pad)
+
     # percussive signal
     print('Separating percussive signal...')
     P = np.copy(S)
@@ -61,8 +67,9 @@ def hpss(x, perc_kernel=17, harm_kernel=17, mask_power=2, fft_size=4096, hop_siz
     p_sig = np.zeros_like(x)
     for i in range(S.shape[0]):
         start_idx = int(i * hop_size)
-        n_samples = min(hop_size, len(x) - start_idx)
-        h_sig[start_idx : start_idx + hop_size] = np.real(np.fft.ifft(H_hat[i,:])[:n_samples])
-        p_sig[start_idx : start_idx + hop_size] = np.real(np.fft.ifft(P_hat[i,:])[:n_samples])
+        n_samples = min(fft_size, len(x) - start_idx)
+        win = windows.hann(fft_size)[:n_samples] / ((fft_size // hop_size) // 2)
+        h_sig[start_idx : start_idx + fft_size] += win * np.real(np.fft.ifft(H_hat[i,:])[:n_samples])
+        p_sig[start_idx : start_idx + fft_size] += win * np.real(np.fft.ifft(P_hat[i,:])[:n_samples])
 
     return h_sig, p_sig
