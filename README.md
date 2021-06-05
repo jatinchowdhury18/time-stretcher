@@ -2,8 +2,8 @@
 
 C++ time stretching implementation, based on the algorithms
 presented in:
-- [Audio Time Stretching with an Adaptive Phase Vocoder](http://www.pitchtech.ch/Confs/ICASSP2017/0000716.pdf), Nicolas Juillerat, Beat Hirsbrunner
-- [Harmonic/Percussive Separation using Median Filtering](https://arrow.tudublin.ie/cgi/viewcontent.cgi?article=1078&context=argcon)
+- [Audio Time Stretching with an Adaptive Phase Vocoder](http://www.pitchtech.ch/Confs/ICASSP2017/0000716.pdf), Nicolas Juillerat and Beat Hirsbrunner (ICASP 2017)
+- [Harmonic/Percussive Separation using Median Filtering](https://arrow.tudublin.ie/cgi/viewcontent.cgi?article=1078&context=argcon), Derry Fitgerald (DAFx 2010)
 
 ## Dependencies
 Building the code in this repository requires FFTW and libsndfile.
@@ -33,3 +33,4 @@ harmonic/percussive source separation algorithm.
 time-stretching algorithm.
 
 ## License
+TODO

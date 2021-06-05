@@ -13,7 +13,7 @@ def median_filter(x, kernel_size):
 
     return y
 
-def spectrogram(x, fft_size, hop_size, zero_pad):
+def spectrogram(x, fft_size, hop_size, zero_pad=1):
     S = None
     for i in range(0, len(x), hop_size):
         x_win = x[i : i + fft_size]
@@ -31,23 +31,23 @@ def hpss(x, perc_kernel=17, harm_kernel=17, mask_power=2, fft_size=4096, hop_siz
     ''' Simple harmonic/percussive source separation based on median filter method '''
 
     print('Computing HPSS...')
-    print('Computing STFTs...')
+    print('\tComputing STFTs...')
     S = spectrogram(x, fft_size, hop_size, zero_pad)
 
     # percussive signal
-    print('Separating percussive signal...')
+    print('\tSeparating percussive signal...')
     P = np.copy(S)
     for i in range(S.shape[0]):
         P[i, :] = median_filter(np.abs(S[i, :]), kernel_size=perc_kernel)
 
     # harmonic signal
-    print('Separating harmonic signal...')
+    print('\tSeparating harmonic signal...')
     H = np.copy(S)
     for h in range(S.shape[1]):
         H[:, h] = median_filter(np.abs(S[:, h]), kernel_size=harm_kernel)
 
     # create filter masks
-    print('Creating filter masks...')
+    print('\tCreating filter masks...')
     M_H = np.copy(S)
     M_P = np.copy(S)
     for i in range(S.shape[0]):
@@ -62,7 +62,7 @@ def hpss(x, perc_kernel=17, harm_kernel=17, mask_power=2, fft_size=4096, hop_siz
     H_hat = np.multiply(S, M_H)
     P_hat = np.multiply(S, M_P)
 
-    print('Computing time-domain signal...')
+    print('\tComputing time-domain signal...')
     h_sig = np.zeros_like(x)
     p_sig = np.zeros_like(x)
     for i in range(S.shape[0]):
