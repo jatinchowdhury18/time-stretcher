@@ -7,3 +7,4 @@ __pycache__
 # extras
 *.wav
 .vscode/
+.DS_Store
