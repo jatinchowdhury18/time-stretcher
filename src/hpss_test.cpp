@@ -1,21 +1,45 @@
 #include "hpss.h"
 #include "WavIO.hpp"
 
-int main()
+void help()
 {
-    constexpr int fs = 44100;
-    constexpr int START_SECONDS = 125;
-    constexpr int NUM_SECONDS = 10;
-    std::string TEST_FILE = "/Users/jachowdhury/Downloads/Tennyson - Old Singles/Tennyson - Old Singles - 01 All Yours.wav";
+    std::cout << "Utility to separate harmonic and percussive signals from a .wav file" << std::endl;
+    std::cout << "Usage: hpss <wav_file> [<num_seconds> <start_seconds>]" << std::endl;
+}
+
+int main(int argc, char* argv[])
+{
+    if(argc < 2 || argc > 4)
+    {
+        help();
+        return 1;
+    }
+
+    if(argc == 2 && std::string(argv[1]) == "--help")
+    {
+        help();
+        return 1;
+    }
+
+    std::string test_file = std::string(argv[1]);
+
+    float num_seconds = 10.0f;
+    if(argc >= 3)
+        num_seconds = (float) std::atof(argv[2]);
+
+    float start_seconds = 0.0f;
+    if(argc >= 4)
+        start_seconds = (float) std::atof(argv[3]);
 
     SF_INFO sf_info;
-    auto wav_signal = WavIO::load_file(TEST_FILE.c_str(), sf_info);
+    auto wav_signal = WavIO::load_file(test_file.c_str(), sf_info);
+    const float fs = (float) sf_info.samplerate;
 
     // trim signal
     std::vector<std::vector<float>> ref_signal;
     {
-        int start_sample = fs * START_SECONDS;
-        int end_sample = start_sample + fs * NUM_SECONDS;
+        int start_sample = int(fs * start_seconds);
+        int end_sample = start_sample + int(fs * num_seconds);
         for(int ch = 0; ch < (int) wav_signal.size(); ++ch)
             ref_signal.push_back(std::vector<float> (&wav_signal[ch][start_sample], &wav_signal[ch][end_sample]));
     }
