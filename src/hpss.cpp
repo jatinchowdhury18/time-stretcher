@@ -1,54 +1,15 @@
 #include "hpss.h"
+#include "fft_utils.h"
 #include <iostream>
 #include <algorithm>
-#include <complex> // need to include this before fftw for std::complex compatibility
-#include <fftw3.h>
 #include <limits>
 
 namespace HPSS
 {
 
-// fftw utils
-template<typename T>
-class fftw_allocator : public std::allocator<T>
-{
-public:
-    template <typename U>
-    struct rebind { typedef fftw_allocator<U> other; };
-    T* allocate(size_t n) { return (T*) fftwf_malloc(sizeof(T) * n); }
-    void deallocate(T* data, std::size_t size) { fftwf_free(data); }
-};
-
-using fftw_real_vec = std::vector<float, fftw_allocator<double>>;
-using fftw_complex_vec = std::vector<std::complex<float>, fftw_allocator<std::complex<float>>>;
-
-fftwf_complex* toFFTW (fftw_complex_vec& vec)
-{
-    return reinterpret_cast<fftwf_complex*> (vec.data());
-}
-
-std::vector<fftw_complex_vec> spectrogram(std::vector<float> x, const HPSS_PARAMS& params)
-{
-    const auto n_fft = params.fft_size * params.zero_pad;
-
-    std::vector<fftw_complex_vec> S;
-    for(int i = 0; i < (int) x.size(); i += params.hop_size)
-    {
-        std::vector<float> x_pad (n_fft, 0.0f);
-        std::copy(&x[i], &x[i + params.fft_size], x_pad.data());
-
-        fftw_complex_vec spectral_frame (n_fft);
-
-        auto fft_plan = fftwf_plan_dft_r2c_1d(n_fft, x_pad.data(), toFFTW(spectral_frame), FFTW_ESTIMATE);
-        fftwf_execute(fft_plan);
-        fftwf_destroy_plan(fft_plan);
-        S.push_back(spectral_frame);
-    }
-
-    return S;
-}
-
+using namespace fft_utils;
 using Vec2D = std::vector<std::vector<float>>;
+
 Vec2D median_filter_harm(const std::vector<fftw_complex_vec>& S, int kernel_size)
 {
     Vec2D H (S.size(), std::vector<float> (S[0].size(), 0.0f));
@@ -95,18 +56,6 @@ Vec2D median_filter_perc(const std::vector<fftw_complex_vec>& S, int kernel_size
     return P;
 }
 
-std::vector<float> hann(int N, float normalization)
-{
-    std::vector<float> win (N, 0.0f);
-    for(int i = 0; i < N; ++i)
-    {
-        win[i] = 0.5f - 0.5f * std::cos(2 * M_PI * (float)i / (float(N - 1)));
-        win[i] /= normalization;
-    }
-
-    return win;
-}
-
 std::pair<std::vector<float>, std::vector<float>> spec_reconstruct(std::vector<fftw_complex_vec>& H_hat,
                                                                    std::vector<fftw_complex_vec>& P_hat,
                                                                    int n_samples,
@@ -150,16 +99,16 @@ std::pair<std::vector<float>, std::vector<float>> spec_reconstruct(std::vector<f
 std::pair<std::vector<float>, std::vector<float>> hpss(std::vector<float> x, const HPSS_PARAMS& params)
 {
     std::cout << "Computing HPSS..." << std::endl;
-    std::cout << "Computing STFTs..." << std::endl;
-    auto S = spectrogram(x, params);
+    std::cout << "\tComputing STFTs..." << std::endl;
+    auto S = spectrogram(x, params.fft_size, params.hop_size, params.zero_pad);
 
-    std::cout << "Separating percussive signal..." << std::endl;
+    std::cout << "\tSeparating percussive signal..." << std::endl;
     auto P = median_filter_perc(S, params.perc_kernel);
 
-    std::cout << "Separating harmonic signal..." << std::endl;
+    std::cout << "\tSeparating harmonic signal..." << std::endl;
     auto H = median_filter_harm(S, params.harm_kernel);
 
-    std::cout << "Applying filter masks..." << std::endl;
+    std::cout << "\tApplying filter masks..." << std::endl;
     std::vector<fftw_complex_vec> H_hat (S.size(), fftw_complex_vec(S[0].size()));
     std::vector<fftw_complex_vec> P_hat (S.size(), fftw_complex_vec(S[0].size()));
     for(int i = 0; i < (int) S.size(); ++i)
@@ -175,7 +124,7 @@ std::pair<std::vector<float>, std::vector<float>> hpss(std::vector<float> x, con
         }
     }
 
-    std::cout << "Computing time-domain signal..." << std::endl;
+    std::cout << "\tComputing time-domain signal..." << std::endl;
     return spec_reconstruct(H_hat, P_hat, (int) x.size(), params);
 }
 
