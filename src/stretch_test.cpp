@@ -23,6 +23,7 @@ int main()
     time_stretch::STRETCH_PARAMS params;
     params.sample_rate = (float) fs;
     params.stretch_factor = 1.5f;
+    params.debug = true;
     params.hpss_params.debug = true;
 
     auto stretch_signal = time_stretch::time_stretch(ref_signal, params);

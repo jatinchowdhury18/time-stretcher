@@ -10,7 +10,6 @@ TODO before making public:
   - fix CMake lists...
   - figure out juce::dsp::FFT stuff
   - update README with instructions for linking
-- profile performance
 - update tests to take arguments
 
 ## Dependencies

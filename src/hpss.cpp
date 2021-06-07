@@ -17,6 +17,7 @@ Vec2D median_filter_harm(const std::vector<fftw_complex_vec>& S, int kernel_size
 
     const int pad = (kernel_size - 1) / 2;
     std::vector<float> med_vec (S.size() + 2 * pad, 0.0f);
+    std::vector<float> kernel_vec (kernel_size, 0.0f);
 
     for(int h = 0; h < (int) S[0].size(); ++h)
     {
@@ -25,7 +26,7 @@ Vec2D median_filter_harm(const std::vector<fftw_complex_vec>& S, int kernel_size
 
         for(int i = 0; i < (int) S.size(); ++i)
         {
-            std::vector<float> kernel_vec (&med_vec[i], &med_vec[i + kernel_size]);
+            std::copy(&med_vec[i], &med_vec[i + kernel_size], kernel_vec.begin());
             std::nth_element(&kernel_vec[0], &kernel_vec[pad], &kernel_vec[kernel_size]);
             H[i][h] = kernel_vec[pad];
         }
@@ -41,6 +42,7 @@ Vec2D median_filter_perc(const std::vector<fftw_complex_vec>& S, int kernel_size
 
     const int pad = (kernel_size - 1) / 2;
     std::vector<float> med_vec (S[0].size() + 2 * pad, 0.0f);
+    std::vector<float> kernel_vec (kernel_size, 0.0f);
 
     for(int i = 0; i < (int) S.size(); ++i)
     {
@@ -49,7 +51,7 @@ Vec2D median_filter_perc(const std::vector<fftw_complex_vec>& S, int kernel_size
 
         for(int h = 0; h < (int) S[i].size(); ++h)
         {
-            std::vector<float> kernel_vec (&med_vec[h], &med_vec[h + kernel_size]);
+            std::copy(&med_vec[i], &med_vec[i + kernel_size], kernel_vec.begin());
             std::nth_element(&kernel_vec[0], &kernel_vec[pad], &kernel_vec[kernel_size]);
             P[i][h] = kernel_vec[pad];
         }

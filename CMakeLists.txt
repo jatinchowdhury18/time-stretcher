@@ -18,6 +18,8 @@ add_library(time_stretch STATIC
 target_link_libraries(time_stretch fftw3f)
 
 if(BUILD_TESTS)
+    message(STATUS "Building tests for time-stretch library")
+
     # test executable for hpss part
     add_executable(hpss src/hpss_test.cpp)
     target_link_libraries(hpss time_stretch ${SNDFILE_LIBRARIES})
