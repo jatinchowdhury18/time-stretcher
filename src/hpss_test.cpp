@@ -20,12 +20,15 @@ int main()
             ref_signal.push_back(std::vector<float> (&wav_signal[ch][start_sample], &wav_signal[ch][end_sample]));
     }
 
+    HPSS::HPSS_PARAMS params;
+    params.debug = true;
+
     std::vector<std::vector<float>> h_signal;
     std::vector<std::vector<float>> p_signal;
     std::vector<std::vector<float>> sum_signal;
     for(int ch = 0; ch < (int) ref_signal.size(); ++ch)
     {
-        auto[h_ch, p_ch] = HPSS::hpss(ref_signal[ch], HPSS::HPSS_PARAMS());
+        auto[h_ch, p_ch] = HPSS::hpss(ref_signal[ch], params);
         h_signal.push_back(h_ch);
         p_signal.push_back(p_ch);
 

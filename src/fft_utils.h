@@ -14,6 +14,7 @@ namespace fft_utils
 #if USING_JUCE
 
 #else
+/** Custom allocator for making vectors compatible with FFTW */
 template<typename T>
 class fftw_allocator : public std::allocator<T>
 {
@@ -24,20 +25,23 @@ public:
     void deallocate(T* data, std::size_t size) { fftwf_free(data); }
 };
 
-using fftw_real_vec = std::vector<float, fftw_allocator<double>>;
+using fftw_real_vec = std::vector<float, fftw_allocator<float>>;
 using fftw_complex_vec = std::vector<std::complex<float>, fftw_allocator<std::complex<float>>>;
 
+/** Re-interpret std::complex as fftw_complex* (requires including <complex> before fftw3.h) */
 inline fftwf_complex* toFFTW (fftw_complex_vec& vec)
 {
     return reinterpret_cast<fftwf_complex*> (vec.data());
 }
 
+/** Applies a window to the given data (out-of-place) */
 static void applyWindow(const std::vector<float>& data, const std::vector<float>& win, std::vector<float>& out)
 {
     for(int n = 0; n < (int) win.size(); ++n)
         out[n] = data[n] * win[n];
 }
 
+/** Helper struct for performing forward FFTs */
 struct ForwardFFT
 {
     std::vector<float> x_in;
@@ -64,6 +68,7 @@ private:
     fftwf_plan fft_plan;
 };
 
+/** Helper struct for performing inverse FFTs */
 struct InverseFFT
 {
     fftw_complex_vec X_in;
@@ -95,6 +100,7 @@ private:
 };
 #endif
 
+/** Helper function for generating Hann window */
 inline std::vector<float> hann(int N, float normalization = 1.0f)
 {
     std::vector<float> win (N, 0.0f);

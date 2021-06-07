@@ -10,6 +10,7 @@ namespace HPSS
 using namespace fft_utils;
 using Vec2D = std::vector<std::vector<float>>;
 
+/** Performs "horizontal" median filtering to obtain harmonic signal */
 Vec2D median_filter_harm(const std::vector<fftw_complex_vec>& S, int kernel_size)
 {
     Vec2D H (S.size(), std::vector<float> (S[0].size(), 0.0f));
@@ -33,6 +34,7 @@ Vec2D median_filter_harm(const std::vector<fftw_complex_vec>& S, int kernel_size
     return H;
 }
 
+/** Performs "vertical" median filtering to obtain percussive signal */
 Vec2D median_filter_perc(const std::vector<fftw_complex_vec>& S, int kernel_size)
 {
     Vec2D P (S.size(), std::vector<float> (S[0].size(), 0.0f));
@@ -56,6 +58,7 @@ Vec2D median_filter_perc(const std::vector<fftw_complex_vec>& S, int kernel_size
     return P;
 }
 
+/** Computes a time-frequency spectrogram with no window (for now) */
 inline std::vector<fftw_complex_vec> spectrogram(const std::vector<float>& x, int fft_size, int hop_size, int zero_pad = 1)
 {
     const auto n_fft = fft_size * zero_pad;
@@ -72,6 +75,7 @@ inline std::vector<fftw_complex_vec> spectrogram(const std::vector<float>& x, in
     return S;
 }
 
+/** Reconstructs the harmonic and percussive signals from their spectrograms with a Hann window */
 std::pair<std::vector<float>, std::vector<float>> spec_reconstruct(std::vector<fftw_complex_vec>& H_hat,
                                                                    std::vector<fftw_complex_vec>& P_hat,
                                                                    int n_samples,
@@ -110,19 +114,25 @@ std::pair<std::vector<float>, std::vector<float>> spec_reconstruct(std::vector<f
     return std::make_pair(h_sig, p_sig);
 }
 
+static void debug_print(const std::string& str, bool debug)
+{
+    if(debug)
+        std::cout << str << std::endl;
+}
+
 std::pair<std::vector<float>, std::vector<float>> hpss(std::vector<float> x, const HPSS_PARAMS& params)
 {
-    std::cout << "Computing HPSS..." << std::endl;
-    std::cout << "\tComputing STFTs..." << std::endl;
+    debug_print("Computing HPSS...", params.debug);
+    debug_print("\tComputing STFTs...", params.debug);
     auto S = spectrogram(x, params.fft_size, params.hop_size, params.zero_pad);
 
-    std::cout << "\tSeparating percussive signal..." << std::endl;
+    debug_print("\tSeparating percussive signal...", params.debug);
     auto P = median_filter_perc(S, params.perc_kernel);
 
-    std::cout << "\tSeparating harmonic signal..." << std::endl;
+    debug_print("\tSeparating harmonic signal...", params.debug);
     auto H = median_filter_harm(S, params.harm_kernel);
 
-    std::cout << "\tApplying filter masks..." << std::endl;
+    debug_print("\tApplying filter masks...", params.debug);
     std::vector<fftw_complex_vec> H_hat (S.size(), fftw_complex_vec(S[0].size()));
     std::vector<fftw_complex_vec> P_hat (S.size(), fftw_complex_vec(S[0].size()));
     for(int i = 0; i < (int) S.size(); ++i)
@@ -138,7 +148,7 @@ std::pair<std::vector<float>, std::vector<float>> hpss(std::vector<float> x, con
         }
     }
 
-    std::cout << "\tComputing time-domain signal..." << std::endl;
+    debug_print("\tComputing time-domain signal...", params.debug);
     return spec_reconstruct(H_hat, P_hat, (int) x.size(), params);
 }
 

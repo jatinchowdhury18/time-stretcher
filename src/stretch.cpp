@@ -8,11 +8,13 @@ namespace time_stretch
 
 using namespace fft_utils;
 
+/** Finds the next power of two larger than the given number */
 int next_pow2(int x)
 {
     return (int) std::pow(2.0f, std::ceil(std::log2((double) x)));
 }
 
+/** Computes the correct phase propagation for a phase vocoder */
 std::vector<std::vector<float>> phase_propagation(const std::vector<fftw_complex_vec>& S, float fs, int Ha, int Hs, int N)
 {
     auto p_arg = [] (float x) { return std::fmod(x + 0.5f, 1.0f) - 0.5f; };
@@ -43,6 +45,7 @@ std::vector<std::vector<float>> phase_propagation(const std::vector<fftw_complex
     return phi_mod;
 }
 
+/** Generates a square-root Hann window */
 std::vector<float> sqrt_hann(int N)
 {
     auto win = fft_utils::hann(N);
@@ -52,6 +55,7 @@ std::vector<float> sqrt_hann(int N)
     return win;
 }
 
+/** Computes a time-frequency spectrogram with a sqrt Hann window */
 std::vector<fftw_complex_vec> spectrogram(const std::vector<float>& x, int fft_size, int hop_size, int zero_pad = 1)
 {
     const auto n_fft = fft_size * zero_pad;
@@ -70,6 +74,7 @@ std::vector<fftw_complex_vec> spectrogram(const std::vector<float>& x, int fft_s
     return S;
 }
 
+/** Reconstructs the signal from its spectrograms with a sqrt Hann window */
 std::vector<float> reconstruct(std::vector<fftw_complex_vec>& S, int hop_size, int window_size, int L)
 {
     std::vector<float> y (L, 0.0f);
@@ -95,23 +100,32 @@ std::vector<float> reconstruct(std::vector<fftw_complex_vec>& S, int hop_size, i
     return { &y[0], &y[final_idx] };
 }
 
+/** Compares greater/less than with absolute value */
 template<typename T>
 static bool abs_compare(T a, T b)
 {
     return (std::abs(a) < std::abs(b));
 }
 
+/** Returns the maximum absolute value in a vector */
 static float max_abs(const std::vector<float>& vec)
 {
     return std::abs(*std::max_element(vec.begin(), vec.end(), abs_compare<float>));
 }
 
+/** Normalizes the signal in a vector to have the same magnitude as the reference */
 static void normalize_vec(const std::vector<float>& vec_ref, std::vector<float>& vec_cur)
 {
     auto mag_ref = max_abs(vec_ref);
     auto mag_cur = max_abs(vec_cur);
     for(int i = 0; i < (int) vec_cur.size(); ++i)
         vec_cur[i] *= mag_ref / mag_cur;
+}
+
+static void debug_print(const std::string& str, bool debug)
+{
+    if(debug)
+        std::cout << str << std::endl;
 }
 
 std::vector<std::vector<float>> time_stretch(const std::vector<std::vector<float>>& x, const STRETCH_PARAMS& params)
@@ -125,7 +139,7 @@ std::vector<std::vector<float>> time_stretch(const std::vector<std::vector<float
     const auto Hs_short = short_window_size / 2;
     const auto Ha_short = int((float) Hs_short / params.stretch_factor);
 
-    std::cout << "Computing mono reference phases..." << std::endl;
+    debug_print("Computing mono reference phases...", params.debug);
     std::vector<float> x_sum (x[0].size(), 0.0f);
     for(int ch = 0; ch < (int) x.size(); ++ch)
         for(int n = 0; n < (int) x_sum.size(); ++n)
@@ -137,20 +151,20 @@ std::vector<std::vector<float>> time_stretch(const std::vector<std::vector<float
     std::vector<std::vector<float>> y;
     for(int ch = 0; ch < (int) x.size(); ++ch)
     {
-        std::cout << "Processing channel " << ch << "..." << std::endl;
+        debug_print("Processing channel " + std::to_string(ch) + "...", params.debug);
         auto[h_signal, p_signal] = HPSS::hpss(x[ch], params.hpss_params);
 
-        std::cout << "Performing time-stretching..." << std::endl;
+        debug_print("Performing time-stretching...", params.debug);
         auto H_full = spectrogram(h_signal, long_window_size, Ha_long);
         auto P_full = spectrogram(p_signal, long_window_size, Ha_long);
 
-        std::cout << "\tSeparating magnitude-only PV..." << std::endl;
+        debug_print("\tSeparating magnitude-only PV...", params.debug);
         auto H_long = spectrogram(h_signal, long_window_size, Ha_long);
         const auto h_x_long = reconstruct(H_long, Hs_long, long_window_size, stretch_len);
         auto P_short = spectrogram(p_signal, short_window_size, Ha_short);
         const auto p_x_short = reconstruct(P_short, Hs_short, short_window_size, stretch_len);
 
-        std::cout << "\tApplying reference phases..." << std::endl;
+        debug_print("\tApplying reference phases...", params.debug);
         for(int m = 0; m < (int) H_full.size(); ++m)
         {
             for(int k = 0; k < (int) H_full[m].size(); ++k)
@@ -160,11 +174,11 @@ std::vector<std::vector<float>> time_stretch(const std::vector<std::vector<float
             }
         }
 
-        std::cout << "\tReconstructing references..." << std::endl;
+        debug_print("\tReconstructing references...", params.debug);
         const auto h_v = reconstruct(H_full, Hs_long, long_window_size, stretch_len);
         const auto p_v = reconstruct(P_full, Hs_long, long_window_size, stretch_len);
 
-        std::cout << "\tPerforming magnitude correction..." << std::endl;
+        debug_print("\tPerforming magnitude correction...", params.debug);
         auto H_v_long = spectrogram(h_v, long_window_size, Ha_long);
         auto P_v_short = spectrogram(p_v, short_window_size, Ha_short);
 
@@ -180,11 +194,11 @@ std::vector<std::vector<float>> time_stretch(const std::vector<std::vector<float
             for(int k = 0; k < (int) P_w_short[m].size(); ++k)
                 P_v_short[m][k] = std::polar(std::abs(P_w_short[m][k]), std::arg(P_v_short[m][k]));
 
-        std::cout << "\tReconstructing final signal..." << std::endl;
+        debug_print("\tReconstructing final signal...", params.debug);
         auto h_y = reconstruct(H_v_long, Ha_long, long_window_size, stretch_len);
         auto p_y = reconstruct(P_v_short, Ha_short, short_window_size, stretch_len);
 
-        std::cout << "\tNormalizing separated signal..." << std::endl;
+        debug_print("\tNormalizing and combining signals...", params.debug);
         normalize_vec(h_signal, h_y);
         normalize_vec(p_signal, p_y);
 

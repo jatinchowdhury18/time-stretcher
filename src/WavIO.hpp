@@ -5,6 +5,10 @@
 #include <iostream>
 #include <vector>
 
+/**
+ * Utility functions for loading .wav files
+ * into 2D vectors using libsndfile.
+ */ 
 namespace WavIO
 {
 
