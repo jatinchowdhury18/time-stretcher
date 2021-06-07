@@ -43,26 +43,52 @@ std::vector<std::vector<float>> phase_propagation(const std::vector<fftw_complex
     return phi_mod;
 }
 
+inline std::vector<fftw_complex_vec> spectrogram(const std::vector<float>& x, int fft_size, int hop_size, int zero_pad = 1)
+{
+    const auto n_fft = fft_size * zero_pad;
+    auto win = fft_utils::hann(fft_size, 1.0f);
+
+    std::vector<fftw_complex_vec> S;
+    std::vector<float> x_pad (n_fft, 0.0f);
+    fftw_complex_vec spectral_frame (n_fft);
+    auto fft_plan = fftwf_plan_dft_r2c_1d(n_fft, x_pad.data(), toFFTW(spectral_frame), FFTW_ESTIMATE);
+    for(int i = 0; i + fft_size < (int) x.size(); i += hop_size)
+    {
+        std::copy(&x[i], &x[i + fft_size], x_pad.data());
+        for(int n = 0; n < fft_size; ++n)
+            x_pad[n] *= std::sqrt(win[n]);
+
+        fftwf_execute(fft_plan);
+        S.push_back(spectral_frame);
+    }
+    fftwf_destroy_plan(fft_plan);
+
+    return S;
+}
+
 std::vector<float> reconstruct(std::vector<fftw_complex_vec>& S, int hop_size, int window_size, int L)
 {
     std::vector<float> y (L, 0.0f);
     auto win = fft_utils::hann(window_size, 1.0f);
     int final_idx = 0;
+
+    const auto n_fft = (int) S[0].size();
+    std::vector<float> fft_out (n_fft, 0.0f);
+    fftw_complex_vec spectral_frame (n_fft);
+    auto fft_plan = fftwf_plan_dft_c2r_1d(n_fft, toFFTW(spectral_frame), fft_out.data(), FFTW_ESTIMATE);
     for(int i = 0; i < (int) S.size(); ++i)
     {
         const auto start_idx = int(i * hop_size);
         const auto n_samples = std::min(window_size, L - start_idx);
 
-        const auto n_fft = (int) S[i].size();
-        std::vector<float> fft_out (n_fft, 0.0f);
-        auto fft_plan = fftwf_plan_dft_c2r_1d(n_fft, toFFTW(S[i]), fft_out.data(), FFTW_ESTIMATE);
+        std::copy(&S[i][0], &S[i][n_fft], spectral_frame.data());
         fftwf_execute(fft_plan);
-        fftwf_destroy_plan(fft_plan);
 
         for(int n = 0; n < n_samples; ++n)
-            y[n + start_idx] += win[n] * fft_out[n] / (float) n_fft;
+            y[n + start_idx] += std::sqrt(win[n]) * fft_out[n] / (float) n_fft;
         final_idx = start_idx + n_samples;
     }
+    fftwf_destroy_plan(fft_plan);
 
     return { &y[0], &y[final_idx] };
 }
@@ -71,6 +97,19 @@ template<typename T>
 static bool abs_compare(T a, T b)
 {
     return (std::abs(a) < std::abs(b));
+}
+
+static float max_abs(const std::vector<float>& vec)
+{
+    return std::abs(*std::max_element(vec.begin(), vec.end(), abs_compare<float>));
+}
+
+static void normalize_vec(const std::vector<float>& vec_ref, std::vector<float>& vec_cur)
+{
+    auto mag_ref = max_abs(vec_ref);
+    auto mag_cur = max_abs(vec_cur);
+    for(int i = 0; i < (int) vec_cur.size(); ++i)
+        vec_cur[i] *= mag_ref / mag_cur;
 }
 
 std::vector<std::vector<float>> time_stretch(const std::vector<std::vector<float>>& x, const STRETCH_PARAMS& params)
@@ -88,7 +127,7 @@ std::vector<std::vector<float>> time_stretch(const std::vector<std::vector<float
     std::vector<float> x_sum (x[0].size(), 0.0f);
     for(int ch = 0; ch < (int) x.size(); ++ch)
         for(int n = 0; n < (int) x_sum.size(); ++n)
-            x_sum[n] += x[ch][n];
+            x_sum[n] += x[ch][n] / (float) x.size();
     auto X_sum = spectrogram(x_sum, long_window_size, Ha_long);
     const auto phase_mods = phase_propagation(X_sum, params.sample_rate, Ha_long, Hs_long, long_window_size);
 
@@ -114,9 +153,8 @@ std::vector<std::vector<float>> time_stretch(const std::vector<std::vector<float
         {
             for(int k = 0; k < (int) H_full[m].size(); ++k)
             {
-                auto phase_adj = std::exp(std::complex<float> { 0.0f, 2.0f * (float)M_PI * phase_mods[m][k] });
-                H_full[m][k] *= phase_adj;
-                P_full[m][k] *= phase_adj;
+                H_full[m][k] = std::polar(std::abs(H_full[m][k]), phase_mods[m][k]);
+                P_full[m][k] = std::polar(std::abs(P_full[m][k]), phase_mods[m][k]);
             }
         }
 
@@ -145,19 +183,15 @@ std::vector<std::vector<float>> time_stretch(const std::vector<std::vector<float
         auto p_y = reconstruct(P_v_short, Ha_short, short_window_size, stretch_len);
 
         std::cout << "\tNormalizing separated signal..." << std::endl;
-        auto h_mag_pre = *std::max_element(h_signal.begin(), h_signal.end(), abs_compare<float>);
-        auto p_mag_pre = *std::max_element(p_signal.begin(), p_signal.end(), abs_compare<float>);
-        auto h_mag_post = *std::max_element(h_y.begin(), h_y.end(), abs_compare<float>);
-        auto p_mag_post = *std::max_element(p_y.begin(), p_y.end(), abs_compare<float>);
+        normalize_vec(h_signal, h_y);
+        normalize_vec(p_signal, p_y);
 
         y.push_back(std::vector<float> (h_y.size(), 0.0f));
         for(int i = 0; i < (int) h_y.size(); ++i)
-            y[ch][i] = (h_y[i] + p_y[i]) * 0.25f;
+            y[ch][i] = h_y[i] + p_y[i];
 
-        std::cout << *std::max_element(y[ch].begin(), y[ch].end(), abs_compare<float>) << std::endl;
+        normalize_vec(x[ch], y[ch]);
     }
-
-    // @TODO: normalize
 
     return y;
 }

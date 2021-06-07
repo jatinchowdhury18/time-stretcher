@@ -4,8 +4,8 @@
 int main()
 {
     constexpr int fs = 44100;
-    constexpr int START_SECONDS = 10;
-    constexpr int NUM_SECONDS = 100;
+    constexpr int START_SECONDS = 125;
+    constexpr int NUM_SECONDS = 10;
     std::string TEST_FILE = "/Users/jachowdhury/Downloads/Tennyson - Old Singles/Tennyson - Old Singles - 01 All Yours.wav";
 
     SF_INFO sf_info;

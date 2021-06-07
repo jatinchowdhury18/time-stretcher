@@ -1,7 +1,8 @@
 import numpy as np
 from scipy.signal import windows
+import matplotlib.pyplot as plt
 
-from hpss import hpss, spectrogram
+from hpss import hpss
 
 def next_pow_2(x):
     return int(2**(np.ceil(np.log2(x))))
@@ -23,13 +24,29 @@ def phase_propagation(S, Fs, Ha, Hs, N):
 
     return phi_mod
 
+def spectrogram(x, fft_size, hop_size, zero_pad=1):
+    S = None
+    win = np.sqrt(windows.hann(fft_size))
+    for i in range(0, len(x), hop_size):
+        x_win = np.copy(x[i : i + fft_size])
+        x_win *= win[:len(x_win)]
+        x_pad = np.zeros(fft_size * zero_pad)
+        x_pad[:len(x_win)] = x_win
+
+        if S is None:
+            S = np.array([np.fft.fft(x_pad)])
+        else:
+            S = np.append(S, np.array([np.fft.fft(x_pad)]), axis=0)
+
+    return S
+
 def reconstruct(S, hop_size, window_size, L):
     y = np.zeros(L)
+    win = np.sqrt(windows.hann(window_size))
     for i in range(S.shape[0]):
         start_idx = int(i * hop_size)
         n_samples = min(window_size, L - start_idx)
-        win = windows.hann(window_size)[:n_samples]
-        y[start_idx : start_idx + window_size] += win * np.real(np.fft.ifft(S[i,:])[:n_samples])
+        y[start_idx : start_idx + window_size] += win[:n_samples] * np.real(np.fft.ifft(S[i,:])[:n_samples])
     return y
 
 def stretch(x, fs, stretch_factor):
@@ -44,7 +61,7 @@ def stretch(x, fs, stretch_factor):
     Ha_short = int(float(Hs_short) / stretch_factor)
 
     print('Computing mono reference phases...')
-    x_sum = np.sum(x, axis=0)
+    x_sum = np.sum(x, axis=0) / 2.0
     X_sum = spectrogram(x_sum, window_size, Ha, zero_pad=1)
     phase_mods = phase_propagation(X_sum, fs, Ha, Hs, window_size)
 
@@ -64,8 +81,8 @@ def stretch(x, fs, stretch_factor):
         p_x_short = reconstruct(P_short, Hs_short, short_window_size, stretch_len)
 
         print('\tApplying reference phases...')
-        H_full = np.multiply(H_full, np.exp(2j * np.pi * phase_mods))
-        P_full = np.multiply(P_full, np.exp(2j * np.pi * phase_mods))
+        H_full = np.multiply(np.abs(H_full), np.exp(1j * phase_mods))
+        P_full = np.multiply(np.abs(P_full), np.exp(1j * phase_mods))
 
         print('\tReconstructing references...')
         h_v = reconstruct(H_full, Hs, window_size, stretch_len)
@@ -94,10 +111,10 @@ def stretch(x, fs, stretch_factor):
         y[ch] = h_y + p_y
 
     # normalize if needed...
-    mag = np.max(np.abs(y))
-    print(f'Original Magnitude {np.max(np.abs(x))}')
-    print(f'Stretched Magnitude {mag}')
-    if mag > 1.0:
-        y /= mag
+    # mag = np.max(np.abs(y))
+    # print(f'Original Magnitude {np.max(np.abs(x))}')
+    # print(f'Stretched Magnitude {mag}')
+    # if mag > 1.0:
+    #     y /= mag
 
     return y
