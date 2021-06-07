@@ -43,25 +43,29 @@ std::vector<std::vector<float>> phase_propagation(const std::vector<fftw_complex
     return phi_mod;
 }
 
-inline std::vector<fftw_complex_vec> spectrogram(const std::vector<float>& x, int fft_size, int hop_size, int zero_pad = 1)
+std::vector<float> sqrt_hann(int N)
+{
+    auto win = fft_utils::hann(N);
+    for(int n = 0; n < N; ++n)
+        win[n] = std::sqrt(win[n]);
+
+    return win;
+}
+
+std::vector<fftw_complex_vec> spectrogram(const std::vector<float>& x, int fft_size, int hop_size, int zero_pad = 1)
 {
     const auto n_fft = fft_size * zero_pad;
-    auto win = fft_utils::hann(fft_size, 1.0f);
+    auto win = sqrt_hann(fft_size);
 
     std::vector<fftw_complex_vec> S;
-    std::vector<float> x_pad (n_fft, 0.0f);
-    fftw_complex_vec spectral_frame (n_fft);
-    auto fft_plan = fftwf_plan_dft_r2c_1d(n_fft, x_pad.data(), toFFTW(spectral_frame), FFTW_ESTIMATE);
+    fft_utils::ForwardFFT fft { n_fft };
     for(int i = 0; i + fft_size < (int) x.size(); i += hop_size)
     {
-        std::copy(&x[i], &x[i + fft_size], x_pad.data());
-        for(int n = 0; n < fft_size; ++n)
-            x_pad[n] *= std::sqrt(win[n]);
-
-        fftwf_execute(fft_plan);
-        S.push_back(spectral_frame);
+        std::copy(&x[i], &x[i + fft_size], fft.x_in.data());
+        fft_utils::applyWindow(fft.x_in, win, fft.x_in);
+        fft.perform();
+        S.push_back(fft.Y_out);
     }
-    fftwf_destroy_plan(fft_plan);
 
     return S;
 }
@@ -69,26 +73,24 @@ inline std::vector<fftw_complex_vec> spectrogram(const std::vector<float>& x, in
 std::vector<float> reconstruct(std::vector<fftw_complex_vec>& S, int hop_size, int window_size, int L)
 {
     std::vector<float> y (L, 0.0f);
-    auto win = fft_utils::hann(window_size, 1.0f);
     int final_idx = 0;
+    auto win = sqrt_hann(window_size);
 
     const auto n_fft = (int) S[0].size();
-    std::vector<float> fft_out (n_fft, 0.0f);
-    fftw_complex_vec spectral_frame (n_fft);
-    auto fft_plan = fftwf_plan_dft_c2r_1d(n_fft, toFFTW(spectral_frame), fft_out.data(), FFTW_ESTIMATE);
+    fft_utils::InverseFFT ifft { n_fft };
     for(int i = 0; i < (int) S.size(); ++i)
     {
         const auto start_idx = int(i * hop_size);
         const auto n_samples = std::min(window_size, L - start_idx);
 
-        std::copy(&S[i][0], &S[i][n_fft], spectral_frame.data());
-        fftwf_execute(fft_plan);
+        std::copy(&S[i][0], &S[i][n_fft], ifft.X_in.data());
+        ifft.perform();
+        fft_utils::applyWindow(ifft.y_out, win, ifft.y_out);
 
         for(int n = 0; n < n_samples; ++n)
-            y[n + start_idx] += std::sqrt(win[n]) * fft_out[n] / (float) n_fft;
+            y[n + start_idx] += ifft.y_out[n];
         final_idx = start_idx + n_samples;
     }
-    fftwf_destroy_plan(fft_plan);
 
     return { &y[0], &y[final_idx] };
 }
