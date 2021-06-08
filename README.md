@@ -5,12 +5,6 @@ presented in:
 - [Audio Time Stretching with an Adaptive Phase Vocoder](http://www.pitchtech.ch/Confs/ICASSP2017/0000716.pdf), Nicolas Juillerat and Beat Hirsbrunner (ICASP 2017)
 - [Harmonic/Percussive Separation using Median Filtering](https://arrow.tudublin.ie/cgi/viewcontent.cgi?article=1078&context=argcon), Derry Fitgerald (DAFx 2010)
 
-TODO before making public:
-- test as library with JUCE
-  - fix CMake lists...
-  - figure out juce::dsp::FFT stuff
-  - update README with instructions for linking
-
 ## Dependencies
 Building the time-stretching library requires FFTW.
 Building the library tests requires libsndfile.
