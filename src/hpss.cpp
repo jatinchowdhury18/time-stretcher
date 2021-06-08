@@ -26,8 +26,8 @@ Vec2D median_filter_harm(const std::vector<fftw_complex_vec>& S, int kernel_size
 
         for(int i = 0; i < (int) S.size(); ++i)
         {
-            std::copy(&med_vec[i], &med_vec[i + kernel_size], kernel_vec.begin());
-            std::nth_element(&kernel_vec[0], &kernel_vec[pad], &kernel_vec[kernel_size]);
+            std::copy(med_vec.begin() + i, med_vec.begin() + i + kernel_size, kernel_vec.begin());
+            std::nth_element(kernel_vec.begin(), kernel_vec.begin() + pad, kernel_vec.end());
             H[i][h] = kernel_vec[pad];
         }
     }
@@ -51,8 +51,8 @@ Vec2D median_filter_perc(const std::vector<fftw_complex_vec>& S, int kernel_size
 
         for(int h = 0; h < (int) S[i].size(); ++h)
         {
-            std::copy(&med_vec[i], &med_vec[i + kernel_size], kernel_vec.begin());
-            std::nth_element(&kernel_vec[0], &kernel_vec[pad], &kernel_vec[kernel_size]);
+            std::copy(med_vec.begin() + i, med_vec.begin() + i + kernel_size, kernel_vec.begin());
+            std::nth_element(kernel_vec.begin(), kernel_vec.begin() + pad, kernel_vec.end());
             P[i][h] = kernel_vec[pad];
         }
     }
@@ -69,7 +69,7 @@ inline std::vector<fftw_complex_vec> spectrogram(const std::vector<float>& x, in
     fft_utils::ForwardFFT fft { n_fft };
     for(int i = 0; i + fft_size < (int) x.size(); i += hop_size)
     {
-        std::copy(&x[i], &x[i + fft_size], fft.x_in.data());
+        std::copy(x.begin() + i, x.begin() + i + fft_size, fft.x_in.data());
         fft.perform();
         S.push_back(fft.Y_out);
     }
@@ -95,7 +95,7 @@ std::pair<std::vector<float>, std::vector<float>> spec_reconstruct(std::vector<f
         int samples = std::min(params.fft_size, n_samples - start_idx);
 
         { // do H
-            std::copy(&H_hat[i][0], &H_hat[i][n_fft], ifft.X_in.data());
+            std::copy(H_hat[i].begin(), H_hat[i].end(), ifft.X_in.data());
             ifft.perform();
             fft_utils::applyWindow(ifft.y_out, win, ifft.y_out);
 
@@ -104,7 +104,7 @@ std::pair<std::vector<float>, std::vector<float>> spec_reconstruct(std::vector<f
         }
 
         { // do P
-            std::copy(&P_hat[i][0], &P_hat[i][n_fft], ifft.X_in.data());
+            std::copy(P_hat[i].begin(), P_hat[i].end(), ifft.X_in.data());
             ifft.perform();
             fft_utils::applyWindow(ifft.y_out, win, ifft.y_out);
 

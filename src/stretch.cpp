@@ -8,12 +8,6 @@ namespace time_stretch
 
 using namespace fft_utils;
 
-/** Finds the next power of two larger than the given number */
-int next_pow2(int x)
-{
-    return (int) std::pow(2.0f, std::ceil(std::log2((double) x)));
-}
-
 /** Computes the correct phase propagation for a phase vocoder */
 std::vector<std::vector<float>> phase_propagation(const std::vector<fftw_complex_vec>& S, float fs, int Ha, int Hs, int N)
 {
@@ -65,7 +59,7 @@ std::vector<fftw_complex_vec> spectrogram(const std::vector<float>& x, int fft_s
     fft_utils::ForwardFFT fft { n_fft };
     for(int i = 0; i + fft_size < (int) x.size(); i += hop_size)
     {
-        std::copy(&x[i], &x[i + fft_size], fft.x_in.data());
+        std::copy(x.begin() + i, x.begin() + i + fft_size, fft.x_in.data());
         fft_utils::applyWindow(fft.x_in, win, fft.x_in);
         fft.perform();
         S.push_back(fft.Y_out);
@@ -88,7 +82,7 @@ std::vector<float> reconstruct(std::vector<fftw_complex_vec>& S, int hop_size, i
         const auto start_idx = int(i * hop_size);
         const auto n_samples = std::min(window_size, L - start_idx);
 
-        std::copy(&S[i][0], &S[i][n_fft], ifft.X_in.data());
+        std::copy(S[i].begin(), S[i].end(), ifft.X_in.data());
         ifft.perform();
         fft_utils::applyWindow(ifft.y_out, win, ifft.y_out);
 
@@ -97,7 +91,7 @@ std::vector<float> reconstruct(std::vector<fftw_complex_vec>& S, int hop_size, i
         final_idx = start_idx + n_samples;
     }
 
-    return { &y[0], &y[final_idx] };
+    return { y.begin(), y.begin() + final_idx };
 }
 
 /** Compares greater/less than with absolute value */
@@ -148,6 +142,7 @@ std::vector<std::vector<float>> time_stretch(const std::vector<std::vector<float
     const auto phase_mods = phase_propagation(X_sum, params.sample_rate, Ha_long, Hs_long, long_window_size);
 
     const auto stretch_len = int((float) x[0].size() * params.stretch_factor) + 2000;
+    int out_len = -1;
     std::vector<std::vector<float>> y;
     for(int ch = 0; ch < (int) x.size(); ++ch)
     {
@@ -202,9 +197,15 @@ std::vector<std::vector<float>> time_stretch(const std::vector<std::vector<float
         normalize_vec(h_signal, h_y);
         normalize_vec(p_signal, p_y);
 
-        y.push_back(std::vector<float> (h_y.size(), 0.0f));
-        for(int i = 0; i < (int) h_y.size(); ++i)
-            y[ch][i] = h_y[i] + p_y[i];
+        if(out_len < 0)
+            out_len = std::min((int) h_y.size(), (int) p_y.size());
+
+        y.push_back(std::vector<float> (out_len, 0.0f));
+        for(int i = 0; i < std::min(out_len, (int) h_y.size()); ++i)
+            y[ch][i] += h_y[i];
+
+        for(int i = 0; i < std::min(out_len, (int) p_y.size()); ++i)
+            y[ch][i] += p_y[i];
 
         normalize_vec(x[ch], y[ch]);
     }
