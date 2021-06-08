@@ -122,8 +122,10 @@ static void debug_print(const std::string& str, bool debug)
         std::cout << str << std::endl;
 }
 
-std::vector<std::vector<float>> time_stretch(const std::vector<std::vector<float>>& x, const STRETCH_PARAMS& params)
+std::vector<std::vector<float>> time_stretch(const std::vector<std::vector<float>>& x, STRETCH_PARAMS& params)
 {
+    params.hpss_params.sample_rate = params.sample_rate; // make sure hpss is using the same sample rate
+
     const auto long_window_size = next_pow2(int(params.long_window_ms * 0.001 * params.sample_rate));
     const auto short_window_size = next_pow2(int(params.short_window_ms * 0.001 * params.sample_rate));
 

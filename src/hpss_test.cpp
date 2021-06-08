@@ -45,6 +45,7 @@ int main(int argc, char* argv[])
     }
 
     HPSS::HPSS_PARAMS params;
+    params.sample_rate = fs;
     params.debug = true;
 
     std::vector<std::vector<float>> h_signal;

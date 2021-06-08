@@ -81,18 +81,19 @@ inline std::vector<fftw_complex_vec> spectrogram(const std::vector<float>& x, in
 std::pair<std::vector<float>, std::vector<float>> spec_reconstruct(std::vector<fftw_complex_vec>& H_hat,
                                                                    std::vector<fftw_complex_vec>& P_hat,
                                                                    int n_samples,
-                                                                   const HPSS_PARAMS& params)
+                                                                   const int fft_size,
+                                                                   const int hop_size)
 {
     std::vector<float> h_sig (n_samples, 0.0f);
     std::vector<float> p_sig (n_samples, 0.0f);
-    const auto win = hann(params.fft_size, float(params.fft_size / params.hop_size) / 2.0f);
+    const auto win = hann(fft_size, float(fft_size / hop_size) / 2.0f);
 
     const int n_fft = (int) H_hat[0].size();
     fft_utils::InverseFFT ifft { n_fft };
     for(int i = 0; i < H_hat.size(); ++i)
     {
-        int start_idx = i * params.hop_size;
-        int samples = std::min(params.fft_size, n_samples - start_idx);
+        int start_idx = i * hop_size;
+        int samples = std::min(fft_size, n_samples - start_idx);
 
         { // do H
             std::copy(H_hat[i].begin(), H_hat[i].end(), ifft.X_in.data());
@@ -124,9 +125,12 @@ static void debug_print(const std::string& str, bool debug)
 
 std::pair<std::vector<float>, std::vector<float>> hpss(std::vector<float> x, const HPSS_PARAMS& params)
 {
+    const auto fft_size = next_pow2(int(params.window_length_ms * 0.001 * params.sample_rate));
+    const auto hop_size = next_pow2(int(params.hop_length_ms * 0.001 * params.sample_rate));
+
     debug_print("Computing HPSS...", params.debug);
     debug_print("\tComputing STFTs...", params.debug);
-    auto S = spectrogram(x, params.fft_size, params.hop_size, params.zero_pad);
+    auto S = spectrogram(x, fft_size, hop_size, params.zero_pad);
 
     debug_print("\tSeparating percussive signal...", params.debug);
     auto P = median_filter_perc(S, params.perc_kernel);
@@ -151,7 +155,7 @@ std::pair<std::vector<float>, std::vector<float>> hpss(std::vector<float> x, con
     }
 
     debug_print("\tComputing time-domain signal...", params.debug);
-    return spec_reconstruct(H_hat, P_hat, (int) x.size(), params);
+    return spec_reconstruct(H_hat, P_hat, (int) x.size(), fft_size, hop_size);
 }
 
 } // namespace HPSS

@@ -29,6 +29,6 @@ struct STRETCH_PARAMS
 };
 
 /** Performs time-stretching on a multi-channel audio signal */
-std::vector<std::vector<float>> time_stretch(const std::vector<std::vector<float>>& x, const STRETCH_PARAMS& params);
+std::vector<std::vector<float>> time_stretch(const std::vector<std::vector<float>>& x, STRETCH_PARAMS& params);
 
 } // namespace time_stretch
