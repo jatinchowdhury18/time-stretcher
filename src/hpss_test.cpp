@@ -39,7 +39,7 @@ int main(int argc, char* argv[])
     std::vector<std::vector<float>> ref_signal;
     {
         int start_sample = int(fs * start_seconds);
-        int end_sample = start_sample + int(fs * num_seconds);
+        int end_sample = std::min(start_sample + int(fs * num_seconds), (int) sf_info.frames);
         for(int ch = 0; ch < (int) wav_signal.size(); ++ch)
             ref_signal.push_back(std::vector<float> (&wav_signal[ch][start_sample], &wav_signal[ch][end_sample]));
     }
