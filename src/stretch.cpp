@@ -13,8 +13,8 @@ std::vector<std::vector<float>> phase_propagation(const std::vector<fftw_complex
 {
     auto p_arg = [] (float x) { return std::fmod(x + 0.5f, 1.0f) - 0.5f; };
 
-    const int M = S.size();
-    const int K = S[0].size();
+    const int M = (int) S.size();
+    const int K = (int) S[0].size();
     std::vector<float> omega (K, 0.0f);
     for(int k = 0; k < (int) omega.size(); ++k)
         omega[k] = (float) k * fs / (float) N;
@@ -22,7 +22,7 @@ std::vector<std::vector<float>> phase_propagation(const std::vector<fftw_complex
     std::vector<std::vector<float>> phi (M, std::vector<float> (K, 0.0f));
     for(int m = 0; m < M; ++m)
         for(int k = 0; k < K; ++k)
-            phi[m][k] = std::arg(S[m][k]) / (2.0f * M_PI) + 0.5f;
+            phi[m][k] = std::arg(S[m][k]) / (2.0f * (float)M_PI) + 0.5f;
 
     const float delta_T = (float) Ha / fs;
     std::vector<std::vector<float>> phi_mod (M, std::vector<float> (K, 0.0f));

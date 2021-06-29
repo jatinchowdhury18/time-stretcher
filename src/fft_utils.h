@@ -185,7 +185,7 @@ inline std::vector<float> hann(int N, float normalization = 1.0f)
     std::vector<float> win (N, 0.0f);
     for(int i = 0; i < N; ++i)
     {
-        win[i] = 0.5f - 0.5f * std::cos(2 * M_PI * (float)i / (float(N - 1)));
+        win[i] = 0.5f - 0.5f * std::cos(2.0f * (float)M_PI * (float)i / (float(N - 1)));
         win[i] /= normalization;
     }
 

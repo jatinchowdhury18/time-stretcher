@@ -90,7 +90,7 @@ std::pair<std::vector<float>, std::vector<float>> spec_reconstruct(std::vector<f
 
     const int n_fft = (int) H_hat[0].size();
     fft_utils::InverseFFT ifft { n_fft };
-    for(int i = 0; i < H_hat.size(); ++i)
+    for(int i = 0; i < (int) H_hat.size(); ++i)
     {
         int start_idx = i * hop_size;
         int samples = std::min(fft_size, n_samples - start_idx);
