@@ -3,7 +3,7 @@
 #if TIMESTRETCH_USING_JUCE
 #define JUCE_GLOBAL_MODULE_SETTINGS_INCLUDED
 #define _USE_MATH_DEFINES
-#include <JuceHeader.h>
+#include <juce_dsp/juce_dsp.h>
 #undef JUCE_GLOBAL_MODULE_SETTINGS_INCLUDED
 
 #else
@@ -32,7 +32,7 @@ using fftw_complex_vec = std::vector<std::complex<float>>;
 
 static void applyWindow(const std::vector<float>& data, const std::vector<float>& win, std::vector<float>& out)
 {
-    FloatVectorOperations::multiply(out.data(), win.data(), data.data(), (int) win.size());
+    juce::FloatVectorOperations::multiply(out.data(), win.data(), data.data(), (int) win.size());
 }
 
 /** Helper struct for performing forward FFTs */
