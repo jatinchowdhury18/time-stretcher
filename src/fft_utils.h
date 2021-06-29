@@ -1,10 +1,8 @@
 #pragma once
 
 #if TIMESTRETCH_USING_JUCE
-#define JUCE_GLOBAL_MODULE_SETTINGS_INCLUDED
 #define _USE_MATH_DEFINES
 #include <juce_dsp/juce_dsp.h>
-#undef JUCE_GLOBAL_MODULE_SETTINGS_INCLUDED
 
 #else
 #include <algorithm>
