@@ -112,8 +112,8 @@ static void normalize_vec(const std::vector<float>& vec_ref, std::vector<float>&
 {
     auto mag_ref = max_abs(vec_ref);
     auto mag_cur = max_abs(vec_cur);
-    for(int i = 0; i < (int) vec_cur.size(); ++i)
-        vec_cur[i] *= mag_ref / mag_cur;
+    for(float& val : vec_cur)
+        val *= mag_ref / mag_cur;
 }
 
 static void debug_print(const std::string& str, bool debug)
@@ -202,7 +202,7 @@ std::vector<std::vector<float>> time_stretch(const std::vector<std::vector<float
         if(out_len < 0)
             out_len = std::min((int) h_y.size(), (int) p_y.size());
 
-        y.push_back(std::vector<float> (out_len, 0.0f));
+        y.emplace_back(out_len, 0.0f);
         for(int i = 0; i < std::min(out_len, (int) h_y.size()); ++i)
             y[ch][i] += h_y[i];
 

@@ -24,7 +24,7 @@ struct STRETCH_PARAMS
     float stretch_factor = 1.0f;    // the time-stretching factor used by the stretcher
     float sample_rate = 44100.0f;   // the sample-rate of the incomind audio signal
     float long_window_ms = 100.0f;  // the (long) window length to use for the harmonic signal
-    float short_window_ms = 4.0f;   // the (short) window length to use for the percussive signal
+    float short_window_ms = 1.0f;   // the (short) window length to use for the percussive signal
     bool debug = false;             // enable print debug statements for the algorithm
 };
 
