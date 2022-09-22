@@ -48,6 +48,8 @@ struct ForwardFFT
 
     void perform()
     {
+        jassert ((int) x_tmp.size() == fft.getSize() * 2);
+
         std::copy(x_in.begin(), x_in.end(), x_tmp.begin());
         fft.performRealOnlyForwardTransform(x_tmp.data());
 
@@ -75,13 +77,15 @@ struct InverseFFT
 
     void perform()
     {
+        jassert ((int) x_tmp.size() == fft.getSize() * 2);
+
         for(int i = 0; i < (int) x_tmp.size(); i += 2)
         {
             x_tmp[i] = X_in[i / 2].real();
             x_tmp[i+1] = X_in[i / 2].imag();
         }
 
-        fft.performRealOnlyForwardTransform(x_tmp.data());
+        fft.performRealOnlyInverseTransform(x_tmp.data());
         std::copy(x_tmp.begin(), x_tmp.begin() + y_out.size(), y_out.begin());
     }
 
